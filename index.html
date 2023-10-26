@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🍃tracking Vtube🍃</title>
+  <link rel="icon" href="image/icon.jpg">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Estilos para el botón circular */
+    .camera-status-button {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: red;
+      cursor: pointer;
+    }
+    /* Estilos para el contenedor de FPS */
+    .fps-container {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    
+  </style>
+</head>
+<div class="avatar-list">
+  <div id="avatarList">
+    <ul>
+      <li><a href="index.html">1. Default</a></li>
+      <li><a href="MiruIkoma.html">2. Miru Ikoma</a></li>
+      <li><a href="AomiHoshi.html">3. Aomi Hoshi</a></li>
+      <li><a href="Rankiao.html">4. Rankiao</a></li>
+      <li><a href="RadDoll.html">5. RadDoll</a></li>
+      <li><a href="Zonko.html">6. Zonko</a></li>
+      <li><a href="Klee.html">7. Klee</a></li>
+    </ul>
+  </div>
+</div>
+
+<div id="contenido">
+  <div class="preview">
+    <video class="input_video" width="1280px" height="720px" autoplay muted playsinline></video>
+    <div class="fps-container" id="fpsContainer">FPS: 0</div>
+    <canvas class="guides"></canvas>
+    <section>
+      <select id="cameraList"></select> <!-- Lista de cámaras disponibles -->
+      <a class="current" href="#" id="conCameraButton">
+        <p>On-Off Cam "Ctrl+0"</p>
+      </a>
+    </section>
+  </div>
+  <div class="camera-status-button" id="cameraStatusButton"></div>
+</div>
+
+
+
+
+
+
+<script src='https://unpkg.com/three@0.133.0/build/three.js'></script>
+<script src='https://unpkg.com/three@0.133.0/examples/js/loaders/GLTFLoader.js'></script>
+<script src='https://unpkg.com/three@0.133.0/examples/js/controls/OrbitControls.js'></script>
+<script src='https://unpkg.com/@pixiv/three-vrm@0.6.7/lib/three-vrm.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1635989137/holistic.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/kalidokit@1.1/dist/kalidokit.umd.js'></script>
+<script src="js/ScriptDefauld.js"></script>
+
+<script>
+  let cameraEnabled = true;
+
+// Función para mostrar u ocultar el video y la lista de avatares al presionar Control + 0
+function toggleVideo(event) {
+  if (event.ctrlKey && event.key === "0") {
+    const inputVideo = document.querySelector(".input_video");
+    const avatarList = document.querySelector(".avatar-list");
+
+    if (cameraEnabled) {
+      inputVideo.style.display = "none";
+      avatarList.style.display = "none";
+      cameraEnabled = false;
+      disableButtons();
+      changeCameraStatusButtonColor("green");
+    } else {
+      inputVideo.style.display = "block";
+      avatarList.style.display = "block";
+      cameraEnabled = true;
+      enableButtons();
+      changeCameraStatusButtonColor("red");
+    }
+  }
+}
+
+
+  // Función para cambiar el color del botón de estado de la cámara
+  function changeCameraStatusButtonColor(color) {
+    document.getElementById("cameraStatusButton").style.backgroundColor = color;
+  }
+
+  // Función para actualizar y mostrar los FPS
+  function updateFPS(fps) {
+    document.getElementById("fpsContainer").textContent = `FPS: ${fps}`;
+  }
+
+  // Agregar oyente de evento para la combinación de teclas Control + 0
+  document.addEventListener("keydown", toggleVideo);
+
+  // Función para deshabilitar los botones
+  function disableButtons() {
+    document.getElementById("conCameraButton").classList.add("disabled");
+  }
+
+  // Función para habilitar los botones
+  function enableButtons() {
+    document.getElementById("conCameraButton").classList.remove("disabled");
+  }
+
+  // Inicialmente, el botón de estado de la cámara es rojo
+  changeCameraStatusButtonColor("red");
+
+  // Obtener la lista de dispositivos de video disponibles
+  const cameraList = document.getElementById("cameraList");
+
+  navigator.mediaDevices.enumerateDevices()
+    .then(devices => {
+      devices.forEach(device => {
+        if (device.kind === 'videoinput') {
+          const option = document.createElement('option');
+          option.value = device.deviceId;
+          option.text = device.label || `Cámara ${cameraList.length + 1}`;
+          cameraList.appendChild(option);
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error al enumerar dispositivos de video:', error);
+    });
+
+  // Agregar un evento para cambiar la cámara al seleccionar una opción en la lista
+  cameraList.addEventListener('change', function () {
+    const selectedDeviceId = cameraList.value;
+    const constraints = { video: { deviceId: selectedDeviceId } };
+
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(stream => {
+        document.querySelector('.input_video').srcObject = stream;
+        cameraEnabled = true;
+        changeCameraStatusButtonColor("red");
+        enableButtons();
+      })
+      .catch(error => {
+        console.error('Error al cambiar la cámara:', error);
+      });
+  });
+
+  // Simulación de actualización de FPS (puedes reemplazar esto con tu lógica real)
+  let fps = 0;
+  setInterval(() => {
+    fps = Math.floor(Math.random() * 30 + 30); // Simulación de FPS
+    updateFPS(fps);
+  }, 1000); // Actualiza cada segundo
+
+</script>
+</body>
+</html>
